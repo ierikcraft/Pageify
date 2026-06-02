@@ -16,6 +16,9 @@ export default function App() {
     return (localStorage.getItem('pageify_login_role') as 'admin' | 'cliente') || null;
   });
   const [showRoleModal, setShowRoleModal] = useState(false);
+  const [isVerifyingPin, setIsVerifyingPin] = useState(false);
+  const [enteredPin, setEnteredPin] = useState('');
+  const [pinError, setPinError] = useState('');
 
   useEffect(() => {
     // Listen to Firebase Auth state
@@ -39,6 +42,9 @@ export default function App() {
 
   const handleLoginTrigger = () => {
     setShowRoleModal(true);
+    setIsVerifyingPin(false);
+    setEnteredPin('');
+    setPinError('');
   };
 
   const handleLoginWithRole = async (role: 'admin' | 'cliente') => {
@@ -294,59 +300,136 @@ export default function App() {
           >
             <button
               onClick={() => setShowRoleModal(false)}
-              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-650 hover:bg-slate-100 transition-colors cursor-pointer"
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-655 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
 
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
-                <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
-              </div>
-              <h3 className="font-display font-extrabold text-slate-900 text-lg leading-tight">¿Cómo deseas acceder a Pageify?</h3>
-              <p className="font-sans text-xs text-slate-500 mt-1.5 px-3">
-                Selecciona tu perfil de acceso para adaptar los permisos de Google.
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              {/* Client Access Option */}
-              <button
-                onClick={() => handleLoginWithRole('cliente')}
-                className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
-                id="role-select-client"
-              >
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
-                  <Users className="w-5 h-5" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-sans font-bold text-slate-850 text-sm">Acceder como Cliente</span>
-                    <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 uppercase">Sin Drive</span>
+            {isVerifyingPin ? (
+              <div className="space-y-4">
+                <div className="text-center mb-4">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto mb-3">
+                    <ShieldCheck className="w-6 h-6 text-amber-600 animate-pulse" />
                   </div>
-                  <p className="font-sans text-[11px] text-slate-450 mt-1 leading-relaxed">
-                    Para solicitar tu web. Solo pedimos tu <strong>nombre y correo</strong> de Google. No se pedirán accesos a tus archivos de Drive.
+                  <h3 className="font-display font-extrabold text-slate-900 text-base leading-tight">PIN de Administrador</h3>
+                  <p className="font-sans text-xs text-slate-500 mt-1.5 px-3">
+                    Pon el pin proporcionado por el admin IT que es <strong>5219</strong>.
                   </p>
                 </div>
-              </button>
 
-              {/* Admin Access Option */}
-              <button
-                onClick={() => handleLoginWithRole('admin')}
-                className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
-                id="role-select-admin"
-              >
-                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
-                  <ShieldCheck className="w-5 h-5" />
+                <div>
+                  <input
+                    type="password"
+                    maxLength={6}
+                    value={enteredPin}
+                    onChange={(e) => {
+                      setEnteredPin(e.target.value);
+                      if (pinError) setPinError('');
+                    }}
+                    placeholder="Introduce el PIN de 4 dígitos"
+                    className="w-full text-center tracking-widest text-lg font-mono border border-slate-200 rounded-2xl px-3 py-3 focus:outline-none focus:ring-1 focus:ring-indigo-500 bg-slate-50/50 focus:bg-white transition-all text-slate-800"
+                    id="admin-pin-field"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        if (enteredPin === '5219') {
+                          setPinError('');
+                          setIsVerifyingPin(false);
+                          handleLoginWithRole('admin');
+                        } else {
+                          setPinError('PIN incorrecto. Por favor, introduce el PIN proporcionado por el admin IT.');
+                        }
+                      }
+                    }}
+                  />
+                  {pinError && (
+                    <span className="text-[11px] font-sans text-rose-600 font-semibold mt-1.5 block text-center">
+                      {pinError}
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-sans font-bold text-slate-850 text-sm block">Acceder como Administrador</span>
-                  <p className="font-sans text-[11px] text-slate-455 mt-1 leading-relaxed">
-                    Para supervisar y sincronizar con Google Sheets. Requiere vincular y guardar hojas de cálculo en tu **Google Drive**.
+
+                <div className="flex gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsVerifyingPin(false);
+                      setEnteredPin('');
+                      setPinError('');
+                    }}
+                    className="flex-1 font-sans font-semibold text-xs border border-slate-200 text-slate-650 hover:bg-slate-50 py-2.5 rounded-xl transition-all cursor-pointer text-center"
+                  >
+                    Volver
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (enteredPin === '5219') {
+                        setPinError('');
+                        setIsVerifyingPin(false);
+                        handleLoginWithRole('admin');
+                      } else {
+                        setPinError('PIN incorrecto. Por favor, introduce el PIN proporcionado por el admin IT.');
+                      }
+                    }}
+                    className="flex-1 font-sans font-bold text-xs bg-indigo-600 text-white hover:bg-indigo-700 py-2.5 rounded-xl transition-all cursor-pointer shadow-sm shadow-indigo-100 text-center"
+                  >
+                    Verificar PIN
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="text-center mb-6">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                    <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
+                  </div>
+                  <h3 className="font-display font-extrabold text-slate-900 text-lg leading-tight">¿Cómo deseas acceder a Pageify?</h3>
+                  <p className="font-sans text-xs text-slate-500 mt-1.5 px-3">
+                    Selecciona tu perfil de acceso para adaptar los permisos de Google.
                   </p>
                 </div>
-              </button>
-            </div>
+
+                <div className="space-y-3">
+                  {/* Client Access Option */}
+                  <button
+                    onClick={() => handleLoginWithRole('cliente')}
+                    className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
+                    id="role-select-client"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
+                      <Users className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-sans font-bold text-slate-850 text-sm">Acceder como Cliente</span>
+                        <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 uppercase">Sin Drive</span>
+                      </div>
+                      <p className="font-sans text-[11px] text-slate-455 mt-1 leading-relaxed">
+                        Para solicitar tu web. Solo pedimos tu <strong>nombre y correo</strong> de Google. No se pedirán accesos a tus archivos de Drive.
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Admin Access Option */}
+                  <button
+                    onClick={() => setIsVerifyingPin(true)}
+                    className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
+                    id="role-select-admin"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
+                      <ShieldCheck className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-sans font-bold text-slate-850 text-sm block">Acceder como Administrador</span>
+                      <p className="font-sans text-[11px] text-slate-455 mt-1 leading-relaxed">
+                        Para supervisar y sincronizar con Google Sheets. Requiere vincular y guardar hojas de cálculo en tu **Google Drive**.
+                      </p>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
 
             <div className="mt-5 text-center">
               <span className="text-[10px] font-sans text-slate-400">

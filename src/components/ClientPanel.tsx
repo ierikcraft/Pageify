@@ -469,8 +469,8 @@ export default function ClientPanel({ currentUser }: ClientPanelProps) {
                           <p className="font-sans text-xs text-amber-700 leading-relaxed mb-3">
                             Este pedido tiene un costo de <strong>{selectedOrder.price}€</strong>. Por favor, realiza el pago enviando {selectedOrder.price}€ a través de Revolut a:
                             <br />
-                            <a href="https://revolut.me/pageify_studio" target="_blank" rel="noreferrer" className="underline font-bold text-amber-900 select-all hover:text-black">
-                              revolut.me/pageify_studio
+                            <a href="https://revolut.me/erik_mv_xlib" target="_blank" rel="noreferrer" className="underline font-bold text-amber-900 select-all hover:text-black">
+                              revolut.me/erik_mv_xlib
                             </a>
                           </p>
                           <button
