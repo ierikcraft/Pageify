@@ -16,17 +16,15 @@ export const auth = getAuth(app);
 // Set up Google Auth Provider
 export const provider = new GoogleAuthProvider();
 
-// Add modern Google Sheets and Google Drive (file-level) scopes
-provider.addScope('https://www.googleapis.com/auth/spreadsheets');
-provider.addScope('https://www.googleapis.com/auth/drive.file');
+// Add default scopes
 provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 provider.addScope('https://www.googleapis.com/auth/userinfo.email');
 
 // Flag to track sign-in in progress
 let isSigningIn = false;
 
-// Cache the Google Access Token in-memory
-let cachedAccessToken: string | null = null;
+// Cache the Google Access Token in-memory and sessionStorage
+let cachedAccessToken: string | null = sessionStorage.getItem('pageify_cached_access_token');
 
 // Handle Firestore specific error JSON rendering for system monitoring
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
@@ -57,33 +55,58 @@ export const initAuth = (
 ) => {
   return onAuthStateChanged(auth, async (user: User | null) => {
     if (user) {
-      // If we have a user but no cached token, they might have refreshed the page.
-      // We will need a login or credential refresh. But in development in AI Studio,
-      // a signInWithPopup will trigger the cachedAccessToken token.
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        // Token is not cached yet, so they'll need a quick sign-in to reload scopes
-        if (onAuthFailure) onAuthFailure();
+      const savedRole = localStorage.getItem('pageify_login_role') || 'cliente';
+      if (savedRole === 'cliente') {
+        // Clients do not need Google Drive / Sheets credentials or access token at all.
+        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken || '');
+      } else {
+        // Admins need drive/sheets credential access token
+        if (cachedAccessToken) {
+          if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
+        } else if (!isSigningIn) {
+          // If we have an admin user but no cached token and aren't logging in, let them sign in
+          if (onAuthFailure) onAuthFailure();
+        }
       }
     } else {
       cachedAccessToken = null;
+      sessionStorage.removeItem('pageify_cached_access_token');
       if (onAuthFailure) onAuthFailure();
     }
   });
 };
 
-// Initiate Google Sign In via Pop-up
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
+// Initiate Google Sign In via Pop-up with role configuration
+export const googleSignIn = async (role: 'admin' | 'cliente'): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to extract access token from Google sign-in response.');
+    localStorage.setItem('pageify_login_role', role);
+
+    const customProvider = new GoogleAuthProvider();
+    if (role === 'admin') {
+      customProvider.addScope('https://www.googleapis.com/auth/spreadsheets');
+      customProvider.addScope('https://www.googleapis.com/auth/drive.file');
+      // Force account consent window to let the admin select sheets permissions explicitly
+      customProvider.setCustomParameters({
+        prompt: 'consent'
+      });
     }
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    customProvider.addScope('https://www.googleapis.com/auth/userinfo.profile');
+    customProvider.addScope('https://www.googleapis.com/auth/userinfo.email');
+
+    const result = await signInWithPopup(auth, customProvider);
+    const credential = GoogleAuthProvider.credentialFromResult(result);
+    
+    const accessToken = credential?.accessToken || '';
+    cachedAccessToken = accessToken || null;
+    
+    if (accessToken) {
+      sessionStorage.setItem('pageify_cached_access_token', accessToken);
+    } else {
+      sessionStorage.removeItem('pageify_cached_access_token');
+    }
+
+    return { user: result.user, accessToken };
   } catch (error: any) {
     console.error('Core Sign-In Error:', error);
     throw error;
@@ -97,8 +120,10 @@ export const getAccessToken = async (): Promise<string | null> => {
   return cachedAccessToken;
 };
 
-// Sign Out of session
+// Sign Out of session & clean states
 export const logout = async () => {
   await signOut(auth);
   cachedAccessToken = null;
+  sessionStorage.removeItem('pageify_cached_access_token');
+  localStorage.removeItem('pageify_login_role');
 };

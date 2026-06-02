@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { googleSignIn, initAuth, logout } from './firebase';
 import { User } from 'firebase/auth';
 import { motion } from 'motion/react';
-import { Laptop, ArrowRight, Sparkles, User as UserIcon, LogOut, CheckCircle2, ChevronRight, HelpCircle, Loader2 } from 'lucide-react';
+import { Laptop, ArrowRight, Sparkles, User as UserIcon, LogOut, CheckCircle2, ChevronRight, HelpCircle, Loader2, ShieldCheck, Users, X } from 'lucide-react';
 import ClientPanel from './components/ClientPanel';
 import AdminPanel from './components/AdminPanel';
 
@@ -12,6 +12,10 @@ export default function App() {
   const [isLoding, setIsLoading] = useState(true);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [viewAsClient, setViewAsClient] = useState(false);
+  const [loginRole, setLoginRole] = useState<'admin' | 'cliente' | null>(() => {
+    return (localStorage.getItem('pageify_login_role') as 'admin' | 'cliente') || null;
+  });
+  const [showRoleModal, setShowRoleModal] = useState(false);
 
   useEffect(() => {
     // Listen to Firebase Auth state
@@ -19,24 +23,38 @@ export default function App() {
       (currentUser, cachedToken) => {
         setUser(currentUser);
         setToken(cachedToken);
+        const role = (localStorage.getItem('pageify_login_role') as 'admin' | 'cliente') || 'cliente';
+        setLoginRole(role);
         setIsLoading(false);
       },
       () => {
         setUser(null);
         setToken(null);
+        setLoginRole(null);
         setIsLoading(false);
       }
     );
     return () => unsubscribe();
   }, []);
 
-  const handleLogin = async () => {
+  const handleLoginTrigger = () => {
+    setShowRoleModal(true);
+  };
+
+  const handleLoginWithRole = async (role: 'admin' | 'cliente') => {
+    setShowRoleModal(false);
     setIsLoggingIn(true);
     try {
-      const result = await googleSignIn();
+      const result = await googleSignIn(role);
       if (result) {
         setUser(result.user);
         setToken(result.accessToken);
+        setLoginRole(role);
+        if (role === 'admin') {
+          setViewAsClient(false);
+        } else {
+          setViewAsClient(true);
+        }
       }
     } catch (err) {
       console.error('Sign-in flow error:', err);
@@ -50,10 +68,11 @@ export default function App() {
       await logout();
       setUser(null);
       setToken(null);
+      setLoginRole(null);
     }
   };
 
-  const isAdminUser = user?.email === 'erikripoll2012@gmail.com';
+  const isAdminUser = loginRole === 'admin' || user?.email === 'erikripoll2012@gmail.com';
 
   return (
     <div className="min-h-screen flex flex-col font-sans selection:bg-indigo-600 selection:text-white" id="applet-viewport">
@@ -128,7 +147,7 @@ export default function App() {
           </div>
         ) : (
           <button
-            onClick={handleLogin}
+            onClick={handleLoginTrigger}
             disabled={isLoggingIn}
             className="font-sans font-semibold text-xs bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl active:scale-95 transition-all shadow-sm shadow-indigo-100 cursor-pointer disabled:opacity-50"
             id="nav-login-btn"
@@ -171,7 +190,7 @@ export default function App() {
               {/* Official Google Sign-In Styled button */}
               <div className="pt-4 flex flex-col items-center gap-3">
                 <button
-                  onClick={handleLogin}
+                  onClick={handleLoginTrigger}
                   disabled={isLoggingIn}
                   className="inline-flex items-center gap-3 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-sans font-medium text-xs px-5 py-3 rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-98 cursor-pointer disabled:opacity-50"
                   id="google-large-gsi-btn"
@@ -264,6 +283,79 @@ export default function App() {
         <p>© {new Date().getFullYear()} Pageify Studio. Hecho para potenciar tu marca española local.</p>
         <p className="mt-1">Operando de forma segura con Firebase Cloud Storage & Google Suite. Pagos vía Revolut.</p>
       </footer>
+
+      {/* Role Selection Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center z-50 p-4" id="role-selection-popup">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-md w-full shadow-2xl relative"
+          >
+            <button
+              onClick={() => setShowRoleModal(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-xl text-slate-400 hover:text-slate-650 hover:bg-slate-100 transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="text-center mb-6">
+              <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                <Sparkles className="w-6 h-6 text-indigo-600 animate-pulse" />
+              </div>
+              <h3 className="font-display font-extrabold text-slate-900 text-lg leading-tight">¿Cómo deseas acceder a Pageify?</h3>
+              <p className="font-sans text-xs text-slate-500 mt-1.5 px-3">
+                Selecciona tu perfil de acceso para adaptar los permisos de Google.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Client Access Option */}
+              <button
+                onClick={() => handleLoginWithRole('cliente')}
+                className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-slate-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
+                id="role-select-client"
+              >
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-sans font-bold text-slate-850 text-sm">Acceder como Cliente</span>
+                    <span className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 uppercase">Sin Drive</span>
+                  </div>
+                  <p className="font-sans text-[11px] text-slate-450 mt-1 leading-relaxed">
+                    Para solicitar tu web. Solo pedimos tu <strong>nombre y correo</strong> de Google. No se pedirán accesos a tus archivos de Drive.
+                  </p>
+                </div>
+              </button>
+
+              {/* Admin Access Option */}
+              <button
+                onClick={() => handleLoginWithRole('admin')}
+                className="w-full text-left p-4 rounded-2xl border border-slate-200 hover:border-indigo-500 hover:bg-indigo-50/50 transition-all cursor-pointer flex items-start gap-3.5 group"
+                id="role-select-admin"
+              >
+                <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mt-0.5 group-hover:scale-105 transition-transform flex-shrink-0">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-sans font-bold text-slate-850 text-sm block">Acceder como Administrador</span>
+                  <p className="font-sans text-[11px] text-slate-455 mt-1 leading-relaxed">
+                    Para supervisar y sincronizar con Google Sheets. Requiere vincular y guardar hojas de cálculo en tu **Google Drive**.
+                  </p>
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-5 text-center">
+              <span className="text-[10px] font-sans text-slate-400">
+                Ambos accesos están protegidos y operan con el nuevo proyecto Firebase.
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      )}
     </div>
   );
 }
