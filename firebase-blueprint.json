@@ -1,0 +1,51 @@
+{
+  "entities": {
+    "Order": {
+      "title": "Order",
+      "description": "A website order from a client",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "clientName": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "progressStatus": { "type": "string", "enum": ["en_espera", "en_curso", "hecho", "finalizado", "cambios_solicitados"] },
+        "paymentStatus": { "type": "string", "enum": ["pendiente", "pagado"] },
+        "resultUrl": { "type": "string" },
+        "resultCode": { "type": "string" },
+        "changesCount": { "type": "number" },
+        "changesDescription": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "sheetSynced": { "type": "boolean" }
+      },
+      "required": ["id", "clientId", "clientEmail", "clientPhone", "clientName", "description", "price", "progressStatus", "paymentStatus", "changesCount", "createdAt", "updatedAt"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "A chat message within an order",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "text": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "senderId", "senderName", "text", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of all orders"
+    },
+    "/orders/{orderId}/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Collection of chat messages for a specific order"
+    }
+  }
+}

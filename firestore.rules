@@ -1,0 +1,124 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Standard hard-coded global helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isVerified() && request.auth.token.email == "erikripoll2012@gmail.com";
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    // existing() helper handles read & delete where request.resource does not exist
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Entity validation functions
+    function isValidOrder(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.clientId is string && data.clientId.size() <= 128
+        && data.clientEmail is string && data.clientEmail.size() <= 200
+        && data.clientPhone is string && data.clientPhone.size() <= 50
+        && data.clientName is string && data.clientName.size() <= 200
+        && data.description is string && data.description.size() <= 5000
+        && data.price is number && data.price >= 5
+        && data.progressStatus is string && data.progressStatus in ["en_espera", "en_curso", "hecho", "finalizado", "cambios_solicitados"]
+        && data.paymentStatus is string && data.paymentStatus in ["pendiente", "pagado"]
+        && data.changesCount is number && data.changesCount >= 0
+        && (!('resultUrl' in data) || (data.resultUrl is string && data.resultUrl.size() <= 2048))
+        && (!('resultCode' in data) || (data.resultCode is string && data.resultCode.size() <= 50000))
+        && (!('changesDescription' in data) || (data.changesDescription is string && data.changesDescription.size() <= 5000));
+    }
+
+    function isValidMessage(data) {
+      return data.id is string && data.id.size() <= 128
+        && data.senderId is string && data.senderId.size() <= 128
+        && data.senderName is string && data.senderName.size() <= 200
+        && data.text is string && data.text.size() <= 5000;
+    }
+
+    match /orders/{orderId} {
+      allow get: if isVerified() && (existing().clientId == request.auth.uid || isAdmin());
+      allow list: if isVerified() && (resource.data.clientId == request.auth.uid || isAdmin());
+
+      allow create: if isVerified()
+        && isValidId(orderId)
+        && isValidOrder(incoming())
+        && incoming().clientId == request.auth.uid
+        && incoming().progressStatus == "en_espera"
+        && incoming().paymentStatus == "pendiente"
+        && incoming().changesCount == 0
+        && incoming().price == 5
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerified()
+        && isValidOrder(incoming())
+        && incoming().clientId == existing().clientId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          isAdmin() || (
+            existing().clientId == request.auth.uid
+            && existing().progressStatus != "finalizado"
+            && (
+              // Action: Client requests changes
+              (
+                incoming().changesCount == existing().changesCount + 1
+                && incoming().price == existing().price + 2
+                && incoming().progressStatus == "cambios_solicitados"
+                && incoming().diff(existing()).affectedKeys().hasOnly(['changesCount', 'changesDescription', 'progressStatus', 'price', 'updatedAt'])
+              )
+            )
+          )
+        );
+
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow get: if isVerified() && (
+          existing().senderId == request.auth.uid 
+          || get(/databases/$(database)/documents/orders/$(orderId)).data.clientId == request.auth.uid 
+          || isAdmin()
+        );
+        allow list: if isVerified() && (
+          get(/databases/$(database)/documents/orders/$(orderId)).data.clientId == request.auth.uid 
+          || isAdmin()
+        );
+
+        allow create: if isVerified()
+          && isValidId(messageId)
+          && isValidMessage(incoming())
+          && incoming().senderId == request.auth.uid
+          && incoming().createdAt == request.time
+          && get(/databases/$(database)/documents/orders/$(orderId)).data.progressStatus != "finalizado"
+          && (
+            get(/databases/$(database)/documents/orders/$(orderId)).data.clientId == request.auth.uid
+            || isAdmin()
+          );
+
+        allow update, delete: if isAdmin();
+      }
+    }
+  }
+}
