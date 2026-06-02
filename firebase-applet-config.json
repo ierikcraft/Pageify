@@ -1,9 +1,10 @@
 {
-  "projectId": "united-zenith-8cf5x",
-  "appId": "1:1047515929077:web:5bd5868bcba02ec19e68bc",
-  "apiKey": "AIzaSyAv0dQpPV-Tp4YRdkmNpOfFH4DE8d-WN2c",
-  "authDomain": "united-zenith-8cf5x.firebaseapp.com",
-  "storageBucket": "united-zenith-8cf5x.firebasestorage.app",
-  "messagingSenderId": "1047515929077",
-  "measurementId": ""
+  "apiKey": "AIzaSyBxtWjOUDVWypkY8aCDLSn9wkWIkkwQ6DQ",
+  "authDomain": "unclick-d848c.firebaseapp.com",
+  "databaseURL": "https://unclick-d848c-default-rtdb.europe-west1.firebasedatabase.app",
+  "projectId": "unclick-d848c",
+  "storageBucket": "unclick-d848c.firebasestorage.app",
+  "messagingSenderId": "1019458134221",
+  "appId": "1:1019458134221:web:7c5623aaa43845b5160984",
+  "measurementId": "G-2ZDNG7BHVQ"
 }
