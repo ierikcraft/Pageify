@@ -313,7 +313,7 @@ export default function App() {
                   </div>
                   <h3 className="font-display font-extrabold text-slate-900 text-base leading-tight">PIN de Administrador</h3>
                   <p className="font-sans text-xs text-slate-500 mt-1.5 px-3">
-                    Pon el pin proporcionado por el admin IT que es <strong>5219</strong>.
+                    Pon el pin proporcionado por el admin IT.
                   </p>
                 </div>
 
